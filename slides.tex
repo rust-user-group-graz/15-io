@@ -1,0 +1,979 @@
+\documentclass{beamer}
+\usetheme{metropolis}
+%\setsansfont[BoldFont={Fira Sans SemiBold}]{Fira Sans Book}
+%\setsansfont{Fontin}
+%\setsansfont{Gillius ADF No2}
+%\setsansfont{Phetsarath OT}
+\setsansfont{Source Sans Pro}
+\setmonofont{Source Code Pro}
+
+\hypersetup{colorlinks=true,
+            linkcolor=mRustLightOrange,
+            menucolor=mRustLightOrange,
+            pagecolor=mRustLightOrange,
+            urlcolor=mRustLightOrange}
+\usepackage{csquotes}
+\usepackage{comment}
+\usepackage{xcolor}
+\usepackage{minted}
+
+\newfontfamily\codefont{Source Code Pro}
+\newcommand\code[1]{\,{\color[HTML]{884400}#1}\,}
+\newcommand\source[1]{$\rightarrow$ via #1}
+
+\title{I/O}
+\date{\today}
+\author{Lukas Prokop}
+\institute{RustGraz community\vfill\hfill\includegraphics[height=2cm]{images/rustacean-orig-noshadow.png}}
+\begin{document}
+\maketitle
+
+\section{Prologue}
+
+\begin{frame}[standout]
+  What is the relation of mspc::channel and golang's chan?
+\end{frame}
+
+\begin{frame}[fragile]{channels}
+  \begin{itemize}
+    \item We talked about \href{https://doc.rust-lang.org/std/sync/mpsc/fn.channel.html}{std::sync::mpsc::channel} \\
+      (reminder: \mintinline{rust}{send()} and \mintinline{rust}{recv})
+    \item rust 1.32 deprecated \href{https://github.com/rust-lang/rust/pull/60921}{select!} macro to listen on several channels (due to \href{https://github.com/rust-lang/rust/pull/42397#issuecomment-315867774}{design regrets}) and \href{https://github.com/rust-lang/rust/issues/27800}{\mintinline{rust}{mpsc_select!}} didn't make it (yet?)
+    \item Thus: You can send and receive (in rust and Go). You can wait for the first message on multiple channels \emph{only} in Go.
+    \item \href{https://crates.io/crates/crossbeam-channel}{crossbeam-channel} (non-core, non-stdlib!) is the \href{https://stjepang.github.io/2019/03/02/new-channels.html}{current way to go}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{crossbeam example}
+  \begin{minted}[fontsize=\footnotesize]{rust}
+use std::thread;
+use std::time::Duration;
+use crossbeam_channel::{bounded, SendError};
+
+let (s, r) = bounded(1);
+assert_eq!(s.send(1), Ok(()));
+
+thread::spawn(move || {
+    assert_eq!(r.recv(), Ok(1));
+    thread::sleep(Duration::from_secs(1));
+    drop(r);
+});
+
+assert_eq!(s.send(2), Ok(()));
+assert_eq!(s.send(3), Err(SendError(3)));
+  \end{minted}
+
+  via \href{https://docs.rs/crossbeam-channel/0.4.3/crossbeam_channel/struct.Sender.html#method.send}{Struct crossbeam\_channel::Sender method send}
+\end{frame}
+
+\begin{frame}[standout]
+  What does atomic in Arc refer to?
+\end{frame}
+
+\begin{frame}[fragile]{atomic in Arc}
+  \begin{quote}
+    Unlike \mintinline{rust}{Rc<T>}, \mintinline{rust}{Arc<T>} uses atomic operations for its reference counting. \\
+    ---\href{https://doc.rust-lang.org/std/sync/struct.Arc.html}{Struct std::sync::Arc}
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{rust Arc example}
+  \begin{minted}[fontsize=\footnotesize]{rust}
+use std::sync::Arc;
+use std::thread;
+
+let five = Arc::new(5);
+
+for _ in 0..10 {
+    let five = Arc::clone(&five);
+
+    thread::spawn(move || {
+        println!("{:?}", five);
+    });
+}
+  \end{minted}
+
+  via \href{https://doc.rust-lang.org/std/sync/struct.Arc.html}{std::sync::Arc}
+\end{frame}
+
+\begin{frame}[standout]
+  The 2020 Mozilla layoff
+\end{frame}
+
+\begin{frame}[fragile]{The 2020 Mozilla layoff}
+  \begin{itemize}
+    \item Fact: \href{https://foundation.mozilla.org}{Mozilla Foundation} (since 2003) is an American not-for-profit organization
+    \item Fact: \href{https://www.mozilla.org/}{Mozilla Corporation} (since 2005) is a wholly owned subsidiary of the Mozilla Foundation that coordinates and integrates the development of Internet-related applications. It is a for-profit corporation.
+  \end{itemize}
+  \begin{quote}
+    The Mozilla Foundation will ultimately control the activities of the Mozilla Corporation and will retain its 100 percent ownership of the new subsidiary. Any profits made by the Mozilla Corporation will be invested back into the Mozilla project. 
+    ---\href{https://web.archive.org/web/20060907025204/http://www.mozillazine.org/talkback.html?article=7085}{“Mozilla Foundation Announces Creation of Mozilla Corporation” (2005)}
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{The 2020 Mozilla layoff}
+  \begin{itemize}
+    \item “In 2018, Mozilla Corporation said it had about 1,000 employees worldwide.”
+    \item Fact: “Mozilla makes most of its money from companies paying to make their search engine the default in Firefox. This includes deals with Baidu in China, Yandex in Russia, and most notably, Google in the US and most of the rest of the world.”
+    \item CEO Mitchell Baker: “You may recall that we expected to be earning revenue in 2019 and 2020 from new subscription products as well as higher revenue from sources outside of search. This did not happen”
+  \end{itemize}
+  source: \href{https://techcrunch.com/2020/01/15/mozilla-lays-off-70-as-it-waits-for-subscription-products-to-generate-revenue/}{techcrunch.com}
+\end{frame}
+
+\begin{frame}[fragile]{The 2020 Mozilla layoff}
+  \begin{itemize}
+    \item “Mozilla is laying off 250 people, about a quarter of its workforce, and plans to refocus some teams on projects designed to make money. The company will have roughly 750 employees going forward, a spokesperson confirmed.”
+    \item \href{https://blog.mozilla.org/blog/2020/08/11/changing-world-changing-mozilla/}{Press release}
+    \item “After 9 years making @WeasyPrint then working on @ServoDev (including @firefox's Quantum CSS) and contributing to @rustlang I'll be looking for a next role. If you're looking for a senior systems engineer my DMs are open! #MozillaLifeboat” via \href{https://twitter.com/SimonSapin/status/1295818647135494151}{twitter}
+    \item \href{https://mozillalifeboat.com/}{\#mozillalifeboat}
+    \item Affected teams: servo, rust (via \href{https://news.ycombinator.com/item?id=24144938}{steveklabnik}), Firefox Developer Tools, …
+  \end{itemize}
+  source: \href{https://www.theverge.com/2020/8/11/21363424/mozilla-layoffs-quarter-staff-250-people-new-revenue-focus}{theverge.com}
+\end{frame}
+
+\begin{frame}[fragile]{The Servo project}
+  Servo: The Parallel Browser Engine Project \\
+  → \href{https://github.com/servo/servo/discussions/27575}{issue #27575: What's the future of Servo?}
+  \begin{quote}
+    “Just then you know: lot of us do not have the mental bandwidth, at the moment, to think or plan anything for the future of Servo. The news came to us as a surprise. It's not just about the project, but also our jobs. \\
+    Not sure when and who will speak about the future of the project, but maybe do not expect anyone to come up with answers right now.” \\
+    ---\href{https://github.com/servo/servo/discussions/27575#discussioncomment-50461}{paulrouget}
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{The Servo project}
+  \begin{quote}
+    “In 2013, Mozilla began the experimental Servo project, which is an engine designed from scratch with the goals of improving concurrency and parallelism while also reducing memory safety vulnerabilities. An important factor is writing Servo in the Rust programming language, also created by Mozilla, which is designed to generate compiled code with better memory safety, concurrency, and parallelism than compiled C++ code.” \\
+    ---\href{https://en.wikipedia.org/w/index.php?title=Gecko_(software)&oldid=967690910#Background}{Wikipedia: Gecko}
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{Browers after 2000}
+  \begin{description}
+    \item[Opera (since 1995):] Presto (2003--2013), WebKit (2013), WebKit fork \href{https://chromium.googlesource.com/chromium/src/+/master/third_party/blink/}{Blink} (since 2013)
+    \item[Internet Explorer (1995--2016):] Mosaic/Spyglass (IE 1--2, 1995--1997), Trident (IE 4--11, 1997--2013)
+    \item[Konqueror (since 1996):] KHTML (these days also WebKit and Qt WebEngine)
+    \item[Edge (since 2015):] EdgeHTML (2015--2018), Blink (since 2018)
+    \item[Safari (since 2003):] KHTML fork WebKit (since 2003)
+    \item[Chromium/Chrome (since 2008):] WebKit (2008--2013), Blink (since 2013)
+    \item[Firefox (since 2002):] \href{https://developer.mozilla.org/en-US/docs/Mozilla/Gecko}{Gecko} (since 2002), \href{https://github.com/servo/servo}{Servo} (since 2016)
+  \end{description}
+
+  Until recently: Mozilla is pushing Gecko/Servo, Google (and others) are pushing Blink.
+\end{frame}
+
+\begin{frame}[fragile]{Browers after 2000}
+  \begin{itemize}
+    \item \href{https://github.com/servo/servo/wiki/Layout-2020}{Layout 2020:} A new implementation of CSS layout for Servo.
+    \item Compare \href{https://caniuse.com/#compare=firefox+81,chrome+86}{supported web standards support of Fx 81 and Chrome 86} via caniuse
+  \end{itemize}
+
+  \textbf{Call for action:} Support Servo (and related) teams:
+  \begin{itemize}
+    \item Servo does not take donations. Hire Servo devs!
+    \item Rust does not take donations by private people (only companies, individuals should organize rust events for support)
+    \item Mozilla Foundation takes \href{https://donate.mozilla.org/en-US/}{donations}
+    \item Also, you can promote Mozilla products (e.g. Firefox) or subscribe their paid products (e.g. VPN)
+  \end{itemize}
+\end{frame}
+
+
+\section{Dialogue}
+
+\begin{frame}[standout]
+  Files on a file system
+\end{frame}
+
+\begin{frame}[fragile]{Files}
+  From a filesystem perspective:
+  \begin{itemize}
+    \item Files are binary blobs.
+    \item File paths/basenames are byte arrays.
+  \end{itemize}
+  From a programmer's perspective:
+  \begin{itemize}
+    \item Files are strings (text file) or bytes (binary file).
+    \item File paths/basenames must be displayed and user-supplied (string?)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Idiomatic transformations}
+  \href{https://stackoverflow.com/a/41034751}{Idiomatic transformations for \mintinline{rust}{String}, \mintinline{rust}{&str}, \mintinline{rust}{Vec<u8>} and \mintinline{rust}{&[u8]}}
+
+  \begin{minted}[fontsize=\tiny]{text}
+&str    -> String  | String::from(s) or s.to_string() or s.to_owned()
+&str    -> &[u8]   | s.as_bytes()
+&str    -> Vec<u8> | s.as_bytes().to_vec() or s.as_bytes().to_owned()
+String  -> &str    | &s if possible* else s.as_str()
+String  -> &[u8]   | s.as_bytes()
+String  -> Vec<u8> | s.into_bytes()
+&[u8]   -> &str    | s.to_vec() or s.to_owned()
+&[u8]   -> String  | std::str::from_utf8(s).unwrap(), but don't**
+&[u8]   -> Vec<u8> | String::from_utf8(s).unwrap(), but don't**
+Vec<u8> -> &str    | &s if possible* else s.as_slice()
+Vec<u8> -> String  | std::str::from_utf8(&s).unwrap(), but don't**
+Vec<u8> -> &[u8]   | String::from_utf8(s).unwrap(), but don't**
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{std::fs}
+  \begin{quote}
+    \textbf{Module std::fs}
+
+    Filesystem manipulation operations.
+
+    This module contains basic methods to manipulate the contents of the local filesystem. All methods in this module represent cross-platform filesystem operations. Extra platform-specific functionality can be found in the extension traits of \mintinline{rust}{std::os::$platform}.
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{Files}
+  How to read entire UTF-8 encoded text file?
+  \begin{minted}{rust}
+use std::fs;
+
+fn main() {
+  let data = fs::read_to_string("/etc/hosts")
+             .expect("Unable to read file");
+  println!("{}", data);
+}
+  \end{minted}
+  via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{Files}
+  How to read entire file as bytes into \mintinline{rust}{Vec<u8>}?
+  \begin{minted}{rust}
+use std::fs;
+
+fn main() {
+  let data = fs::read("/etc/hosts")
+             .expect("Unable to read file");
+  println!("{}", data.len());
+}
+  \end{minted}
+  via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{Files}
+  How to write a file?
+  \begin{minted}{rust}
+use std::fs;
+
+fn main() {
+    let data = "Some data!";
+    fs::write("/tmp/foo", data)
+       .expect("Unable to write file");
+}
+  \end{minted}
+  via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{I/O traits}
+  \mintinline{rust}{std::io::Read}
+  \begin{itemize}
+    \item \mintinline{rust}{fn read(&mut self, buf: &mut [u8])} \mintinline{rust}{-> Result<usize>}
+  \end{itemize}
+  \mintinline{rust}{std::io::Write}
+  \begin{itemize}
+    \item \mintinline{rust}{fn write(&mut self, buf: &[u8])} \mintinline{rust}{-> Result<usize>}
+    \item \mintinline{rust}{fn flush(&mut self)} \mintinline{rust}{-> Result<()>}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Files}
+  We want to read metadata of an ISO image file.
+  One of the Windows 10 ISO image is 5.8 GB. Might not fit into memory.
+
+  → Buffered I/O
+\end{frame}
+
+\begin{frame}[fragile]{I/O traits}
+  \mintinline{rust}{std::io::BufRead}
+  \begin{itemize}
+    \item \mintinline{rust}{fn fill_buf(&mut self) -> Result<&[u8]>}
+    \item \mintinline{rust}{fn consume(&mut self, amt: usize)}
+  \end{itemize}
+  There is no \mintinline{rust}{std::io::BufWrite} trait, but struct \mintinline{rust}{std::io::BufWriter}. \mintinline{rust}{std::io::BufReader} implements \mintinline{rust}{std::io::BufRead}.
+
+  \mintinline{rust}{std::io::BufReader}: The default buffer capacity is currently 8~KB, but may change in the future.
+\end{frame}
+
+\begin{frame}[fragile]{Files: read buffered}
+  \begin{minted}{rust}
+use std::fs::File;
+use std::io::{BufReader, Read};
+
+fn main() {
+  let mut data = String::new();
+  let f = File::open("/etc/hosts")
+               .expect("Unable to open file");
+  let mut br = BufReader::new(f);
+  br.read_to_string(&mut data)
+    .expect("Unable to read string");
+  println!("{}", data);
+}
+  \end{minted}
+  via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{Files: write buffered}
+  \begin{minted}{rust}
+use std::fs::File;
+use std::io::{BufWriter, Write};
+
+fn main() {
+  let data = "Some data!";
+  let f = File::create("/tmp/foo")
+               .expect("Unable to create file");
+  let mut f = BufWriter::new(f);
+  f.write_all(data.as_bytes())
+   .expect("Unable to write data");
+}
+  \end{minted}
+  via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{Files: read line by line buffered}
+  \begin{minted}[fontsize=\small]{rust}
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+fn main() {
+  let f = File::open("/etc/hosts")
+               .expect("Unable to open file");
+  let f = BufReader::new(f);
+
+  for line in f.lines() {
+    let line = line.expect("Unable to read line");
+    println!("Line: {}", line);
+  }
+}
+\end{minted}
+  where line is anything between newline (\texttt{0xA}) or CRLF (\texttt{0xDA}).
+  Via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
+\end{frame}
+
+\begin{frame}[fragile]{Filepaths}
+  \begin{description}
+    \item[Are there any issues with backward/forward slashes on Windows?] Specify the filepath as original. Use literal strings \mintinline{rust}{r"like\x20this"} to disable backslash interpretation.
+    \item[Using forward slash, does it open correctly on Windows \emph{and} Linux?] Yes, Windows has a fallback mechanism.
+  \end{description}
+\end{frame}
+
+\begin{frame}[fragile]{Encoding conversions}
+  \begin{description}
+    \item[I want to read a non-UTF-8 file. How?]
+      Use the \href{https://docs.rs/encoding_rs/0.8.13/encoding_rs/}{encoding\_rs} crate.
+    \item[I want to read a file with a non-UTF-8 filepath. How?]
+      Use \mintinline{rust}{std::path::Path} which internally represents the file path as \mintinline{rust}{Vec<u8>}. \mintinline{rust}{fs::File::open} actually takes a Path. No problem here.
+  \end{description}
+\end{frame}
+
+\begin{frame}[standout]
+  File formats
+\end{frame}
+
+\begin{frame}[fragile]{File formats}
+  File formats:
+  \begin{itemize}
+    \item for data serialization
+    \item as configuration language (\texttt{Cargo.toml})
+  \end{itemize}
+  In which encoding? ISO-8859-1..16 (excl. 12), ASCII, UTF-\{8,16,32\}, OML, \dots
+\end{frame}
+
+\begin{frame}[fragile]{File formats}
+  ASN.1/BER/PER/OER, Binn, BSON, CBOR, CSV, EXI, FlatBuffers, Ion, MessagePack, Netstrings, JSON, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, YAML, XML/SOAP, XML-RPC
+\end{frame}
+
+\begin{frame}[fragile]{File formats}
+  ASN.1/BER/PER/OER, Binn, BSON, CBOR, \textbf{CSV}, EXI, FlatBuffers, Ion, MessagePack, Netstrings, \textbf{JSON}, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, \textbf{YAML}, \textbf{XML}/SOAP, XML-RPC
+\end{frame}
+  
+\begin{frame}[fragile]{Comma-separated values (CSV)}
+  \begin{itemize}
+    \item Comma-separated values (CSV)
+    \item No formal standard (encoding?, delimiter?, escaping?, line breaks?)
+    \item File extension \texttt{.csv}, MIME type \texttt{text/csv}
+    \item rust: \href{https://github.com/BurntSushi/rust-csv}{csv} crate by BurntSushi (\href{https://docs.rs/csv/1.0.0/csv/tutorial/index.html}{tutorial})
+  \end{itemize}
+
+  \begin{minted}[fontsize=\scriptsize]{text}
+Date,Title,Digital
+2020-08-26,I/O,yes
+2020-08-05,Concurrency,yes
+2020-06-24,"Lifetimes, anonymous functions and modularization",yes
+2020-05-27,Rust's advanced type system,yes
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{csv crate}
+  \begin{minted}[fontsize=\scriptsize]{rust}
+use std::error::Error;
+use std::io;
+use std::process;
+
+fn example() -> Result<(), Box<dyn Error>> {
+  let mut rdr = csv::Reader::from_reader(io::stdin());
+  for result in rdr.records() {
+    let record = result?;
+    println!("{:?}", record);
+  }
+  Ok(())
+}
+
+fn main() {
+  if let Err(err) = example() {
+    println!("error running example: {}", err);
+    process::exit(1);
+  }
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{xsv command line tool}
+  \begin{quote}
+    \href{https://github.com/BurntSushi/xsv}{xsv} is a command line program for indexing, slicing, analyzing, splitting and joining CSV files. Commands should be simple, fast and composable.
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{serde}
+  The \href{https://serde.rs/}{serde} crate:
+  \begin{quote}
+    Serde is a framework for \textbf{ser}ializing and \textbf{de}serializing Rust data structures efficiently and generically.
+  \end{quote}
+
+  \textbf{Supported data formats:} JSON, Bincode, CBOR, YAML, MessagePack, TOML, Pickle, RON, BSON, Avro, JSON5, Postcard, URL, Envy, Envy Store, S-expressions, D-Bus, FlexBuffers
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  \href{https://toml.io/en/}{Tom's Obvious Minimal Language (TOML)}
+
+  \begin{quote}
+    \emph{A config file format for humans.}
+
+    TOML aims to be a minimal configuration file format that's easy to read due to obvious semantics. TOML is designed to map unambiguously to a hash table. TOML should be easy to parse into data structures in a wide variety of languages. 
+  \end{quote}
+
+  Formal standard (unlike INI), strongly typed, human readable, allows comments, \texttt{.toml} file extension. MIME type? It's complicated.
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  \begin{itemize}
+    \item TOML is case sensitive.
+    \item A TOML file must be a valid UTF-8 encoded Unicode document.
+    \item Whitespace means tab (0x09) or space (0x20).
+    \item Newline means LF (0x0A) or CRLF (0x0D 0x0A).
+    \item Bare keys may only contain ASCII letters, ASCII digits, underscores, and dashes (A-Za-z0-9\_-).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  \textbf{Data types:}
+  \begin{itemize}
+    \item Associative array (key/value)
+    \item Arrays
+    \item Tables
+    \item Inline tables
+    \item Arrays of tables
+    \item Integers \& Floats
+    \item Booleans
+    \item Dates \& Times, with optional offsets
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  \begin{minted}[fontsize=\scriptsize]{toml}
+title = "TOML document"
+
+[types]
+bare-key = "value"
+'quoted "value"' = "value"
+
+[types.bool]
+somebool = true
+
+[types.int]
+someint = 0xDEADBEEF
+someint = 0b1101_0110
+
+[types.float]
+somefloat = 5e+22
+infinity = inf
+not-a-number = nan
+
+[types.date]    # RFC 3339
+somedate = 2020-03-12T07:32:00-08:00
+spaced = 2020-03-12 07:32:00Z
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  \begin{minted}{toml}
+[types.string]
+somestring = "TOML\tEx\u00E9mple \"string\""
+someliteral = 'C:\Users\lukas\Documents'
+multiline = """\
+    Roses are red \
+    Violets are blue"""
+
+[types.array]  # arbitrarily nested
+someint = [ 1, 2, 3 ]
+nested = [[ 1, 2 ], [ "a" ]]
+heterogeneous = [ 0.1, 5, "rust" ]
+
+[types."inline table"]
+name = { lang = "Rust", loc = "Graz" }
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{TOML}
+  Like keys, you cannot define any table more than once. Doing so is invalid.
+  But array of tables (double square brackets) allow this (behaves like append operation).
+  \begin{minted}{toml}
+[[products]]
+name = "Hammer"
+sku = 738594937
+
+[[products]]
+
+[[products]]
+name = "Nail"
+sku = 284758393
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{TOML result}
+  Resulting data structure:
+  \begin{minted}{json}
+{
+  "products": [
+    { "name": "Hammer", "sku": 738594937 },
+    { },
+    { "name": "Nail", "sku": 284758393 }
+  ]
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{JSON at compile time?}
+  Compiled language. Two approaches:
+  \begin{itemize}
+    \item Give me structures. I will fill in the data.
+    \item I parse data at runtime and return abstract values.
+  \end{itemize}
+  The former saves memory. The latter allows to parse data of unknown structure at compile-time.
+\end{frame}
+
+\begin{frame}[fragile]{A small Golang example}
+  Example of the former approach in golang:
+  \begin{minted}[fontsize=\small]{go}
+type gridVideoRenderer struct {
+  VideoID            int     `json:"videoId"`
+  Title              string  `json:"title"`
+  PublishedTimeText  string  `json:"publishedTimeText"`
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate. Allows both approaches.
+
+  An example for the first approach (derive attribute):
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  \begin{minted}[fontsize=\small]{text}
+let toml_str = r#"
+    global_string = "test"
+    global_integer = 5
+    [server]
+    ip = "127.0.0.1"
+    port = 80
+    [[peers]]
+    ip = "127.0.0.1"
+    port = 8080
+    [[peers]]
+    ip = "127.0.0.1"
+"#;
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  \begin{minted}[fontsize=\small]{rust}
+use serde_derive::Deserialize;
+
+#[derive(Debug, Deserialize)]
+struct Config {
+  global_string: Option<String>,
+  global_integer: Option<u64>,
+  server: Option<ServerConfig>,
+  peers: Option<Vec<PeerConfig>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ServerConfig {
+  ip: Option<String>,
+  port: Option<u64>,
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  \begin{minted}[fontsize=\small]{rust}
+#[derive(Debug, Deserialize)]
+struct PeerConfig {
+  ip: Option<String>,
+  port: Option<u64>,
+}
+
+fn main() {
+  let toml_str = // from before
+  let decoded: Config =
+    toml::from_str(toml_str).unwrap();
+  println!("{:#?}", decoded);
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate. Allows both approaches.
+
+  An example for the second approach (derive attribute):
+\end{frame}
+
+\begin{frame}[fragile]{Example: TOML to JSON}
+  \begin{minted}{rust}
+use std::env;
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
+
+use serde_json::Value as Json;
+use toml::Value as Toml;
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Example: TOML to JSON}
+  \begin{minted}[fontsize=\scriptsize]{rust}
+fn main() {
+  let mut args = env::args();
+  let mut input = String::new();
+  if args.len() > 1 {
+    let name = args.nth(1).unwrap();
+    File::open(&name)
+        .and_then(|mut f| f.read_to_string(&mut input))
+        .unwrap();
+  } else {
+    io::stdin().read_to_string(&mut input).unwrap();
+  }
+
+  match input.parse() {
+    Ok(toml) => {
+      let json = convert(toml);
+      println!("{}", serde_json::to_string_pretty(&json).unwrap());
+    }
+    Err(error) => println!("failed to parse TOML: {}", error),
+}  }
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Example: TOML to JSON}
+  via \href{https://doc.rust-lang.org/std/primitive.str.html#method.parse}{str}:
+  \begin{minted}[fontsize=\scriptsize]{rust}
+pub fn parse<F>(&self)
+  -> Result<F, <F as FromStr>::Err>
+  where F: FromStr
+  \end{minted}
+  The return type implements \mintinline{rust}{from_str()}. We call \mintinline{rust}{from_str()} with the given string and return the resulting value or an error.
+
+  Trait awesomeness!
+\end{frame}
+
+\begin{frame}[fragile]{Example: TOML to JSON}
+  \begin{minted}[fontsize=\scriptsize]{rust}
+fn convert(toml: Toml) -> Json {
+  match toml {
+    Toml::String(s) => Json::String(s),
+    Toml::Integer(i) => Json::Number(i.into()),
+    Toml::Float(f) => {
+      let n = serde_json::Number::from_f64(f)
+        .expect("float infinite and nan not allowed");
+      Json::Number(n)
+    }
+    Toml::Boolean(b) => Json::Bool(b),
+    Toml::Array(arr) => Json::Array(
+      arr.into_iter().map(convert).collect()),
+    Toml::Table(table) => {
+        Json::Object(table.into_iter()
+          .map(|(k, v)| (k, convert(v))).collect())
+    }
+    Toml::Datetime(dt) => Json::String(dt.to_string()),
+  }
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{YAML}
+  \begin{quote}
+    \emph{YAML (YAML Ain't Markup Language)}
+
+    YAML is a human friendly data serialization standard for all programming languages.
+  \end{quote}
+
+  Formal standard, strongly typed, human readable, allows comments, \texttt{.yaml} or \texttt{.yml} file extension (MIME type? It's complicated).
+\end{frame}
+
+\begin{frame}[fragile]{YAML}
+  \begin{itemize}
+    \item human-readable data-serialization language
+    \item UTF-8, UTF-16 or UTF-32 encoded
+    \item YAML 1.2 is a superset of JSON
+    \item intendation denotes structures, no tab indentation!
+    \item comments via \mintinline{text}{#} (only single-line)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{YAML}
+  \textbf{Data types:}
+  \begin{itemize}
+    \item \mintinline{yaml}{!!seq} with \texttt{- value}
+    \item \mintinline{yaml}{!!map} with \texttt{key: value}
+    \item \mintinline{yaml}{!tag} to annotate entries
+    \item single-quote or double-quote strings (latter: C-style escape sequences)
+    \item multiline strings via \mintinline{text}{|} (newline) or \mintinline{text}{>} (fold)
+    \item \mintinline{yaml}{&anchor} and \mintinline{yaml}{*anchor} reference
+    \item strings, integer with various bases, float with .inf and .nan, null
+    \item \texttt{no} is a boolean
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{YAML}
+  \begin{minted}[fontsize=\scriptsize]{yaml}
+--- !<tag:clarkevans.com,2002:invoice>
+invoice: 34843
+date   : 2001-01-23
+bill-to: &id001
+    given  : Chris
+    family : Dumars
+    address:
+        lines: |
+            458 Walkman Dr.
+            Suite #292
+        city    : Royal Oak
+ship-to: *id001
+product:
+    - quantity    : 4
+      description : Basketball
+      price       : 450.00
+    - quantity    : 1
+      description : Super Hoop
+      price       : 2392.00
+comments:
+    Late afternoon is best.
+    Backup contact is 338-4338.
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{YAML values}
+  YAML values can have many types. Compare this with JSON (later):
+
+  \begin{quote}
+    NoToken, 
+    StreamStart(TEncoding), 
+    StreamEnd, 
+    VersionDirective(u32, u32), 
+    TagDirective(String, String), 
+    DocumentStart, 
+    DocumentEnd, 
+    BlockSequenceStart, 
+    BlockMappingStart, 
+    BlockEnd, 
+    FlowSequenceStart, 
+    FlowSequenceEnd, 
+    FlowMappingStart, 
+    FlowMappingEnd, 
+    BlockEntry, 
+    FlowEntry, 
+    Key, 
+    Value, 
+    Alias(String), 
+    Anchor(String), 
+    Tag(String, String), 
+    Scalar(TScalarStyle, String)
+  \end{quote}
+\end{frame}
+
+\begin{frame}[fragile]{JSON}
+  \begin{quote}
+    \emph{JSON} (JavaScript Object Notation) is a lightweight data-interchange format. It is easy for humans to read and write. It is easy for machines to parse and generate.
+  \end{quote}
+
+  \begin{itemize}
+    \item based on a subset of the JavaScript Programming Language Standard ECMA-262 3rd Edition (Dec. 1999)
+    \item MIME type \texttt{application/json} and file extension \texttt{.json}
+    \item string, number, object, array, number (w/o bases), bool, null
+    \item object, array
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{images/json-whitespace.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=0.6\textwidth]{images/json-number.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=0.6\textwidth]{images/json-string.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{images/json-value.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=\textwidth]{images/json-array.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{JSON spec}
+  \begin{center}
+    \includegraphics[width=\textwidth]{images/json-object.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{serde}
+  \href{https://github.com/serde-rs/json}{serde\_json} crate:
+  \begin{minted}[fontsize=\small]{rust}
+pub enum Value {
+  Null,
+  Bool(bool),
+  Number(Number),
+  String(String),
+  Array(Vec<Value>),
+  Object(Map<String, Value>),
+}
+
+let n = json!(null);
+let v = json!({ "an": "object" });
+  \end{minted}
+\end{frame}
+
+
+\begin{frame}[fragile]{JSON in serde}
+  \begin{minted}{rust}
+struct W {
+  a: i32,
+  b: i32,
+}
+let w = W { a: 0, b: 0 };
+// ⇒ `{"a":0,"b":0}`
+
+struct X(i32, i32);
+let x = X(0, 0);
+// ⇒ `[0,0]`
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{JSON in serde}
+  \begin{minted}{rust}
+struct Y(i32);
+let y = Y(0);
+// ⇒ just the inner value `0`
+
+struct Z;
+let z = Z;
+// ⇒ `null`
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{JSON in serde}
+  \begin{minted}{rust}
+enum E {
+  W { a: i32, b: i32 },
+  X(i32, i32),
+  Y(i32),
+  Z,
+}
+let w = E::W { a: 0, b: 0 };
+// ⇒ `{"W":{"a":0,"b":0}}`
+let x = E::X(0, 0);
+// ⇒ `{"X":[0,0]}`
+let y = E::Y(0);
+// ⇒ `{"Y":0}`
+let z = E::Z;
+// ⇒ `"Z"`
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Missing topics}
+  stdin/stdout/stderr, sockets, syscalls, regex, base64, file formats (XML, HTML, protobuf), scraper crate, URL handling, clappy, TTY detection for colored CLI output, tokio crate, simple TCP server, interact with RLS
+\end{frame}
+
+%>>> pkg = b'{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"processId":null,"rootUri":null,"capabilities":{}}}'
+%>>> len(pkg)
+%107
+%>>> proc = subprocess.Popen('/home/meisterluk/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rls', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+%>>> proc.stdin.write(b'Content-Length: 107\r\n\r\n' + pkg)
+%130
+%>>> proc.communicate()
+%(b'Content-Length: 607\r\n\r\n{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"textDocumentSync":2,"hoverProvider":true,"completionProvider":{"resolveProvider":true,"triggerCharacters":[".",":"]},"definitionProvider":true,"implementationProvider":true,"referencesProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"workspaceSymbolProvider":true,"codeActionProvider":true,"codeLensProvider":{"resolveProvider":false},"documentFormattingProvider":true,"documentRangeFormattingProvider":false,"renameProvider":true,"executeCommandProvider":{"commands":["rls.applySuggestion-30239","rls.deglobImports-30239"]}}}}', b"thread 'main' panicked at 'No root path or URI', src/libcore/option.rs:1034:5\nnote: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.\n")
+%>>>
+
+%\begin{frame}[fragile]{TODO}
+%  TODO Ad RLS:
+%  \begin{itemize}
+%    \item \url{https://github.com/rust-lang/rls-vscode/blob/master/language-configuration.json}
+%    \item \url{https://microsoft.github.io/language-server-protocol/specification#initialize}
+%    \item \url{https://github.com/rust-lang/rls}
+%  \end{itemize}
+%\end{frame}
+
+\section{Epilogue}
+
+\begin{frame}[fragile]{Quiz}
+  \begin{description}
+    \item[Data type wise: what is a filepath?] \hfill{} \\
+      ~\uncover<2->{a byte array}
+    \item[Which trait allows you to read buffered?] \hfill{} \\
+      ~\uncover<3->{\mintinline{rust}{std::io::BufRead}}
+    \item[Which file format allows anchors and refs?] \hfill{} \\
+      ~\uncover<4->{YAML}
+    \item[Which popular library can (de)serialize data?] \hfill{} \\
+      ~\uncover<5->{serde}
+  \end{description}
+\end{frame}
+
+
+\begin{frame}[fragile]{Next time}
+  \begin{tabular}{ll}
+    Next meetup   & Wed, 2020/06/24 (maybe at location at photo) \\
+    Topic         & Hacker Jeopardy \\
+    Future topics & Cross-compilation; Debugging, \\
+                  & benchmarks and tests; Misc \& rust projects
+  \end{tabular}
+  \vfill{}
+  \begin{center}
+    \includegraphics[height=120px]{images/inffeldgasse.jpg} \\
+    {CC BY-SA 2.0 at: \href{https://en.wikipedia.org/wiki/Graz_University_of_Technology#/media/File:TUG_Inffeldgasse_4.jpg}{Florian Klien}}
+  \end{center}
+\end{frame}
+
+\begin{frame}[standout]
+  Thank you!
+
+  \includegraphics[width=40pt]{images/rustacean-flat-happy.png}
+\end{frame}
+
+\end{document}

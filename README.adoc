@@ -1,0 +1,8 @@
+README
+======
+
+This presentation took place on 2020/08/26.
+
+* I created the slides using beamer with the metropolis theme
+* resources/images are found in the folder images/
+* LuaLaTeχ generates the PDF. The file ``compile.sh`` shows how to compile it.
