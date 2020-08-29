@@ -124,7 +124,7 @@ for _ in 0..10 {
   \begin{itemize}
     \item “Mozilla is laying off 250 people, about a quarter of its workforce, and plans to refocus some teams on projects designed to make money. The company will have roughly 750 employees going forward, a spokesperson confirmed.”
     \item \href{https://blog.mozilla.org/blog/2020/08/11/changing-world-changing-mozilla/}{Press release}
-    \item “After 9 years making @WeasyPrint then working on @ServoDev (including @firefox's Quantum CSS) and contributing to @rustlang I'll be looking for a next role. If you're looking for a senior systems engineer my DMs are open! #MozillaLifeboat” via \href{https://twitter.com/SimonSapin/status/1295818647135494151}{twitter}
+    \item “After 9 years making @WeasyPrint then working on @ServoDev (including @firefox's Quantum CSS) and contributing to @rustlang I'll be looking for a next role. If you're looking for a senior systems engineer my DMs are open! \#MozillaLifeboat” via \href{https://twitter.com/SimonSapin/status/1295818647135494151}{twitter}
     \item \href{https://mozillalifeboat.com/}{\#mozillalifeboat}
     \item Affected teams: servo, rust (via \href{https://news.ycombinator.com/item?id=24144938}{steveklabnik}), Firefox Developer Tools, …
   \end{itemize}
@@ -133,7 +133,7 @@ for _ in 0..10 {
 
 \begin{frame}[fragile]{The Servo project}
   Servo: The Parallel Browser Engine Project \\
-  → \href{https://github.com/servo/servo/discussions/27575}{issue #27575: What's the future of Servo?}
+  → \href{https://github.com/servo/servo/discussions/27575}{issue \#27575: What's the future of Servo?}
   \begin{quote}
     “Just then you know: lot of us do not have the mental bandwidth, at the moment, to think or plan anything for the future of Servo. The news came to us as a surprise. It's not just about the project, but also our jobs. \\
     Not sure when and who will speak about the future of the project, but maybe do not expect anyone to come up with answers right now.” \\
@@ -260,9 +260,9 @@ fn main() {
 use std::fs;
 
 fn main() {
-    let data = "Some data!";
-    fs::write("/tmp/foo", data)
-       .expect("Unable to write file");
+  let data = "Some data!";
+  fs::write("/tmp/foo", data)
+     .expect("Unable to write file");
 }
   \end{minted}
   via \href{https://stackoverflow.com/a/31193386}{stackoverflow}
@@ -293,7 +293,10 @@ fn main() {
     \item \mintinline{rust}{fn fill_buf(&mut self) -> Result<&[u8]>}
     \item \mintinline{rust}{fn consume(&mut self, amt: usize)}
   \end{itemize}
-  There is no \mintinline{rust}{std::io::BufWrite} trait, but struct \mintinline{rust}{std::io::BufWriter}. \mintinline{rust}{std::io::BufReader} implements \mintinline{rust}{std::io::BufRead}.
+  There is no \mintinline{rust}{std::io::BufWrite} trait.
+
+  \vspace{20pt}
+  \mintinline{rust}{std::io::BufReader} implements \mintinline{rust}{std::io::BufRead}. struct \mintinline{rust}{std::io::BufWriter} provides a writer.
 
   \mintinline{rust}{std::io::BufReader}: The default buffer capacity is currently 8~KB, but may change in the future.
 \end{frame}
@@ -383,13 +386,19 @@ fn main() {
 \end{frame}
 
 \begin{frame}[fragile]{File formats}
-  ASN.1/BER/PER/OER, Binn, BSON, CBOR, CSV, EXI, FlatBuffers, Ion, MessagePack, Netstrings, JSON, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, YAML, XML/SOAP, XML-RPC
+  ASN.1/BER/PER/OER, Binn, BSON, CBOR, CSV, EXI, FlatBuffers, Ion, MessagePack, Netstrings, JSON, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, TOML, YAML, XML/SOAP, \\ XML-RPC
+  % TODO source
 \end{frame}
 
 \begin{frame}[fragile]{File formats}
-  ASN.1/BER/PER/OER, Binn, BSON, CBOR, \textbf{CSV}, EXI, FlatBuffers, Ion, MessagePack, Netstrings, \textbf{JSON}, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, \textbf{YAML}, \textbf{XML}/SOAP, XML-RPC
+  ASN.1/BER/PER/OER, Binn, BSON, CBOR, \textbf{CSV}, EXI, FlatBuffers, Ion, MessagePack, Netstrings, \textbf{JSON}, OGDL, OpenDDL, PHP serialize, Pickle, Property list, Protobuf, Recursive Length Prefix, S-expressions, Smile, SDXF, Thrift, \textbf{TOML}, \textbf{YAML}, XML/SOAP, XML-RPC
+  % TODO source
 \end{frame}
   
+\begin{frame}[standout]
+  File formats: CSV
+\end{frame}
+
 \begin{frame}[fragile]{Comma-separated values (CSV)}
   \begin{itemize}
     \item Comma-separated values (CSV)
@@ -437,7 +446,11 @@ fn main() {
   \end{quote}
 \end{frame}
 
-\begin{frame}[fragile]{serde}
+\begin{frame}[standout]
+  File formats: TOML
+\end{frame}
+
+\begin{frame}[fragile]{preliminary: serde}
   The \href{https://serde.rs/}{serde} crate:
   \begin{quote}
     Serde is a framework for \textbf{ser}ializing and \textbf{de}serializing Rust data structures efficiently and generically.
@@ -556,17 +569,21 @@ sku = 284758393
   \end{minted}
 \end{frame}
 
-\begin{frame}[fragile]{JSON at compile time?}
+\begin{frame}[fragile]{TOML at compile time?}
   Compiled language. Two approaches:
-  \begin{itemize}
-    \item Give me structures. I will fill in the data.
-    \item I parse data at runtime and return abstract values.
-  \end{itemize}
-  The former saves memory. The latter allows to parse data of unknown structure at compile-time.
+  \begin{description}
+    \item[struct] Give me structures. I will fill in the data.
+    \item[runtime] I parse data at runtime and return file format specific values.
+  \end{description}
+  Advantages:
+  \begin{description}
+    \item[struct] memory management is in user control (stack or heap, as you like). Less memory because we save space for discriminators.
+    \item[runtime] can parse data with unknown structure.
+  \end{description}
 \end{frame}
 
-\begin{frame}[fragile]{A small Golang example}
-  Example of the former approach in golang:
+\begin{frame}[fragile]{Excursion: parsing in golang}
+  Example of the \emph{struct} approach in golang:
   \begin{minted}[fontsize=\small]{go}
 type gridVideoRenderer struct {
   VideoID            int     `json:"videoId"`
@@ -574,29 +591,25 @@ type gridVideoRenderer struct {
   PublishedTimeText  string  `json:"publishedTimeText"`
 }
   \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{toml-rs}
-  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate. Allows both approaches.
-
-  An example for the first approach (derive attribute):
-\end{frame}
-
-\begin{frame}[fragile]{toml-rs}
-  \begin{minted}[fontsize=\small]{text}
-let toml_str = r#"
-    global_string = "test"
-    global_integer = 5
-    [server]
-    ip = "127.0.0.1"
-    port = 80
-    [[peers]]
-    ip = "127.0.0.1"
-    port = 8080
-    [[peers]]
-    ip = "127.0.0.1"
-"#;
+  Example of the \emph{runtime} approach in golang:
+  \begin{minted}[fontsize=\small]{go}
+data := map[string]interface{}{}
+        // map to "void pointers"
+json.Unmarshal(jsonData, &data)
+// $KEY entry coerced to $TYPE
+data["videoId"].(int)  // $KEY = videoId, $TYPE = int
+data["title"].(string) // $KEY = title, $TYPE = string
   \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{toml-rs}
+  (To the best of my knowledge:) serde always allows both approaches.
+
+  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate.
+
+  An example for the \emph{struct} approach follows.
+
+  In rust, this is implemented with a derive attribute.
 \end{frame}
 
 \begin{frame}[fragile]{toml-rs}
@@ -628,7 +641,7 @@ struct PeerConfig {
 }
 
 fn main() {
-  let toml_str = // from before
+  let toml_str: &str; // from next slide
   let decoded: Config =
     toml::from_str(toml_str).unwrap();
   println!("{:#?}", decoded);
@@ -637,9 +650,30 @@ fn main() {
 \end{frame}
 
 \begin{frame}[fragile]{toml-rs}
-  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate. Allows both approaches.
+  \begin{minted}[fontsize=\small]{text}
+let toml_str = r#"
+    global_string = "test"
+    global_integer = 5
+    [server]
+    ip = "127.0.0.1"
+    port = 80
+    [[peers]]
+    ip = "127.0.0.1"
+    port = 8080
+    [[peers]]
+    ip = "127.0.0.1"
+"#;
+  \end{minted}
+  \mintinline{text}{r}-prefix to disable interpretation of backslash sequences.
+  \mintinline{text}{#"}-prefix to terminate string with \mintinline{text}{"#}, but not with \mintinline{text}{"}.
+\end{frame}
 
-  An example for the second approach (derive attribute):
+\begin{frame}[fragile]{toml-rs}
+  → \href{https://github.com/alexcrichton/toml-rs}{toml-rs} crate.
+
+  An example for the runtime approach follows.
+
+  In rust, this is implemented with \mintinline{rust}{str.parse()}:
 \end{frame}
 
 \begin{frame}[fragile]{Example: TOML to JSON}
@@ -674,7 +708,8 @@ fn main() {
       println!("{}", serde_json::to_string_pretty(&json).unwrap());
     }
     Err(error) => println!("failed to parse TOML: {}", error),
-}  }
+  }
+}
   \end{minted}
 \end{frame}
 
@@ -712,6 +747,10 @@ fn convert(toml: Toml) -> Json {
   }
 }
   \end{minted}
+\end{frame}
+
+\begin{frame}[standout]
+  File formats: YAML
 \end{frame}
 
 \begin{frame}[fragile]{YAML}
@@ -802,6 +841,10 @@ comments:
     Tag(String, String), 
     Scalar(TScalarStyle, String)
   \end{quote}
+\end{frame}
+
+\begin{frame}[standout]
+  File formats: JSON
 \end{frame}
 
 \begin{frame}[fragile]{JSON}
@@ -917,8 +960,22 @@ let z = E::Z;
   \end{minted}
 \end{frame}
 
-\begin{frame}[fragile]{Missing topics}
-  stdin/stdout/stderr, sockets, syscalls, regex, base64, file formats (XML, HTML, protobuf), scraper crate, URL handling, clappy, TTY detection for colored CLI output, tokio crate, simple TCP server, interact with RLS
+\begin{frame}[fragile]{I/O topics to elaborate on}
+  \begin{itemize}
+    \item stdin/stdout/stderr
+    \item TTY detection for colored CLI output
+    \item CLI parsing with clappy
+    \item sockets
+    \item syscalls
+    \item regex
+    \item base64
+    \item file formats (in particular: XML, HTML, protobuf)
+    \item simple GET requests, URL handling, scraper crate
+    \item tokio crate
+    \item simple TCP server
+    \item CLI project: send file to RLS and report all warn/errors
+  \end{itemize}
+  (but, that's it for today\dots)
 \end{frame}
 
 %>>> pkg = b'{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"processId":null,"rootUri":null,"capabilities":{}}}'
@@ -958,7 +1015,7 @@ let z = E::Z;
 
 \begin{frame}[fragile]{Next time}
   \begin{tabular}{ll}
-    Next meetup   & Wed, 2020/06/24 (maybe at location at photo) \\
+    Next meetup   & Wed, 2020/09/30 (TBA: maybe at location at photo) \\
     Topic         & Hacker Jeopardy \\
     Future topics & Cross-compilation; Debugging, \\
                   & benchmarks and tests; Misc \& rust projects
